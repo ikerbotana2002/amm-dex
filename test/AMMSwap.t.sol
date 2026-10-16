@@ -143,4 +143,73 @@ contract AMMSwapTest is Test {
         assertLt(pool.reserveA(), reserveABefore);
         assertGt(pool.reserveB(), reserveBBefore);
     }
+
+    function testExactSwapOutputWithFee() public view {
+        uint256 amountIn = 10 ether;
+
+        uint256 reserveIn = 100 ether;
+        uint256 reserveOut = 200 ether;
+
+        uint256 amountInWithFee = amountIn * 997;
+
+        uint256 expectedOut = (amountInWithFee * reserveOut) / (reserveIn * 1000 + amountInWithFee);
+
+        uint256 actualOut = pool.getAmountOut(amountIn, reserveIn, reserveOut);
+
+        assertEq(actualOut, expectedOut);
+    }
+
+    function testReservesMatchTokenBalancesAfterSwap() public {
+        vm.prank(bob);
+        pool.swapAForB(10 ether, 0);
+
+        uint256 actualBalanceA = tokenA.balanceOf(address(pool));
+
+        uint256 actualBalanceB = tokenB.balanceOf(address(pool));
+
+        assertEq(pool.reserveA(), actualBalanceA);
+        assertEq(pool.reserveB(), actualBalanceB);
+    }
+
+    function test_RevertWhen_SwapApprovalMissingKeepsBalances() public {
+        vm.prank(bob);
+        tokenA.approve(address(pool), 0);
+
+        uint256 bobBalanceBefore = tokenA.balanceOf(bob);
+
+        uint256 poolBalanceBefore = tokenA.balanceOf(address(pool));
+
+        uint256 reserveABefore = pool.reserveA();
+        uint256 reserveBBefore = pool.reserveB();
+
+        vm.prank(bob);
+        vm.expectRevert();
+
+        pool.swapAForB(10 ether, 0);
+
+        assertEq(tokenA.balanceOf(bob), bobBalanceBefore);
+
+        assertEq(tokenA.balanceOf(address(pool)), poolBalanceBefore);
+
+        assertEq(pool.reserveA(), reserveABefore);
+        assertEq(pool.reserveB(), reserveBBefore);
+    }
+
+    function testInvariantKDoesNotDecrease() public {
+        uint256 kBefore = pool.reserveA() * pool.reserveB();
+
+        vm.prank(bob);
+        pool.swapAForB(10 ether, 0);
+
+        uint256 kAfterFirstSwap = pool.reserveA() * pool.reserveB();
+
+        assertGe(kAfterFirstSwap, kBefore);
+
+        vm.prank(bob);
+        pool.swapBForA(20 ether, 0);
+
+        uint256 kAfterSecondSwap = pool.reserveA() * pool.reserveB();
+
+        assertGe(kAfterSecondSwap, kAfterFirstSwap);
+    }
 }
