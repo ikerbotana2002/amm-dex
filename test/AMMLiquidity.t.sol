@@ -165,7 +165,7 @@ contract AMMLiquidityTest is Test {
 
         // Bob trades Token A for Token B.
         vm.prank(bob);
-        pool.swapAForB(10 ether, 0);
+        pool.swapAForB(10 ether, 0, block.timestamp + 1 hours);
 
         assertEq(pool.reserveA(), 110 ether);
 

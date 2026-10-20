@@ -24,6 +24,7 @@ contract AMMPool is ERC20, ReentrancyGuard {
     error UnsupportedToken();
     error InsufficientLPShares();
     error SlippageExceeded();
+    error DeadlineExpired(uint256 currentTimestamp, uint256 deadline);
 
     IERC20 public immutable tokenA;
     IERC20 public immutable tokenB;
@@ -226,30 +227,47 @@ contract AMMPool is ERC20, ReentrancyGuard {
     // SWAP TOKEN A FOR TOKEN B
     // ---------------------------------------------------------
 
-    function swapAForB(uint256 amountIn, uint256 amountOutMin) external nonReentrant returns (uint256 amountOut) {
+    function swapAForB(uint256 amountIn, uint256 amountOutMin, uint256 deadline)
+        external
+        nonReentrant
+        returns (uint256 amountOut)
+    {
+        // 1. Rechazar transacciones caducadas.
+        if (block.timestamp > deadline) {
+            revert DeadlineExpired(block.timestamp, deadline);
+        }
+
+        // 2. Comprobar que hay liquidez.
         if (reserveA == 0 || reserveB == 0) {
             revert PoolNotInitialized();
         }
 
+        // 3. Calcular la salida con la comisión del 0,3%.
         amountOut = getAmountOut(amountIn, reserveA, reserveB);
 
+        // 4. Proteger al usuario frente a slippage.
         if (amountOut == 0 || amountOut < amountOutMin) {
             revert InsufficientOutputAmount();
         }
 
+        // 5. Registrar el saldo de Token A anterior.
         uint256 balanceBefore = tokenA.balanceOf(address(this));
 
+        // 6. Recibir la cantidad completa de Token A.
         tokenA.safeTransferFrom(msg.sender, address(this), amountIn);
 
+        // 7. Comprobar que hemos recibido lo esperado.
         uint256 received = tokenA.balanceOf(address(this)) - balanceBefore;
 
         if (received != amountIn) {
             revert UnsupportedToken();
         }
 
+        // 8. Actualizar las reservas.
         reserveA += amountIn;
         reserveB -= amountOut;
 
+        // 9. Entregar Token B.
         tokenB.safeTransfer(msg.sender, amountOut);
 
         emit TokensSwapped(msg.sender, address(tokenA), address(tokenB), amountIn, amountOut);
@@ -259,7 +277,15 @@ contract AMMPool is ERC20, ReentrancyGuard {
     // SWAP TOKEN B FOR TOKEN A
     // ---------------------------------------------------------
 
-    function swapBForA(uint256 amountIn, uint256 amountOutMin) external nonReentrant returns (uint256 amountOut) {
+    function swapBForA(uint256 amountIn, uint256 amountOutMin, uint256 deadline)
+        external
+        nonReentrant
+        returns (uint256 amountOut)
+    {
+        if (block.timestamp > deadline) {
+            revert DeadlineExpired(block.timestamp, deadline);
+        }
+
         if (reserveA == 0 || reserveB == 0) {
             revert PoolNotInitialized();
         }

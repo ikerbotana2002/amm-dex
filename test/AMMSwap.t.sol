@@ -59,7 +59,7 @@ contract AMMSwapTest is Test {
         uint256 bobBalanceBefore = tokenB.balanceOf(bob);
 
         vm.prank(bob);
-        uint256 amountOut = pool.swapAForB(10 ether, 18 ether);
+        uint256 amountOut = pool.swapAForB(10 ether, 18 ether, block.timestamp + 1 hours);
 
         assertEq(amountOut, expectedOut);
 
@@ -74,7 +74,7 @@ contract AMMSwapTest is Test {
         uint256 expectedOut = pool.getAmountOut(20 ether, 200 ether, 100 ether);
 
         vm.prank(bob);
-        uint256 amountOut = pool.swapBForA(20 ether, 0);
+        uint256 amountOut = pool.swapBForA(20 ether, 0, block.timestamp + 1 hours);
 
         assertEq(amountOut, expectedOut);
 
@@ -87,7 +87,7 @@ contract AMMSwapTest is Test {
         uint256 kBefore = pool.reserveA() * pool.reserveB();
 
         vm.prank(bob);
-        pool.swapAForB(10 ether, 0);
+        pool.swapAForB(10 ether, 0, block.timestamp + 1 hours);
 
         uint256 kAfter = pool.reserveA() * pool.reserveB();
 
@@ -98,14 +98,14 @@ contract AMMSwapTest is Test {
         vm.expectRevert(AMMPool.InsufficientOutputAmount.selector);
 
         vm.prank(bob);
-        pool.swapAForB(10 ether, 20 ether);
+        pool.swapAForB(10 ether, 20 ether, block.timestamp + 1 hours);
     }
 
     function test_RevertWhen_AmountInIsZero() public {
         vm.expectRevert(AMMPool.InvalidAmount.selector);
 
         vm.prank(bob);
-        pool.swapAForB(0, 0);
+        pool.swapAForB(0, 0, block.timestamp + 1 hours);
     }
 
     function test_RevertWhen_PoolNotInitialized() public {
@@ -114,7 +114,7 @@ contract AMMSwapTest is Test {
         vm.expectRevert(AMMPool.PoolNotInitialized.selector);
 
         vm.prank(bob);
-        emptyPool.swapAForB(10 ether, 0);
+        emptyPool.swapAForB(10 ether, 0, block.timestamp + 1 hours);
     }
 
     function test_RevertWhen_TraderHasNoApproval() public {
@@ -124,7 +124,7 @@ contract AMMSwapTest is Test {
         vm.expectRevert();
 
         vm.prank(bob);
-        pool.swapAForB(10 ether, 0);
+        pool.swapAForB(10 ether, 0, block.timestamp + 1 hours);
 
         assertEq(pool.reserveA(), 100 ether);
         assertEq(pool.reserveB(), 200 ether);
@@ -132,13 +132,13 @@ contract AMMSwapTest is Test {
 
     function testTwoConsecutiveSwaps() public {
         vm.prank(bob);
-        pool.swapAForB(10 ether, 0);
+        pool.swapAForB(10 ether, 0, block.timestamp + 1 hours);
 
         uint256 reserveABefore = pool.reserveA();
         uint256 reserveBBefore = pool.reserveB();
 
         vm.prank(bob);
-        pool.swapBForA(10 ether, 0);
+        pool.swapBForA(10 ether, 0, block.timestamp + 1 hours);
 
         assertLt(pool.reserveA(), reserveABefore);
         assertGt(pool.reserveB(), reserveBBefore);
@@ -161,7 +161,7 @@ contract AMMSwapTest is Test {
 
     function testReservesMatchTokenBalancesAfterSwap() public {
         vm.prank(bob);
-        pool.swapAForB(10 ether, 0);
+        pool.swapAForB(10 ether, 0, block.timestamp + 1 hours);
 
         uint256 actualBalanceA = tokenA.balanceOf(address(pool));
 
@@ -185,7 +185,7 @@ contract AMMSwapTest is Test {
         vm.prank(bob);
         vm.expectRevert();
 
-        pool.swapAForB(10 ether, 0);
+        pool.swapAForB(10 ether, 0, block.timestamp + 1 hours);
 
         assertEq(tokenA.balanceOf(bob), bobBalanceBefore);
 
@@ -199,14 +199,14 @@ contract AMMSwapTest is Test {
         uint256 kBefore = pool.reserveA() * pool.reserveB();
 
         vm.prank(bob);
-        pool.swapAForB(10 ether, 0);
+        pool.swapAForB(10 ether, 0, block.timestamp + 1 hours);
 
         uint256 kAfterFirstSwap = pool.reserveA() * pool.reserveB();
 
         assertGe(kAfterFirstSwap, kBefore);
 
         vm.prank(bob);
-        pool.swapBForA(20 ether, 0);
+        pool.swapBForA(20 ether, 0, block.timestamp + 1 hours);
 
         uint256 kAfterSecondSwap = pool.reserveA() * pool.reserveB();
 
