@@ -200,4 +200,41 @@ contract AMMSecurityTest is Test {
         // Pero los tokens donados siguen en el contrato.
         assertEq(tokenA.balanceOf(address(pool)), 10 ether);
     }
+
+    function testReinitializationAfterFullWithdrawalWithDonation() public {
+        // 1. Bob envía 10 Token A directamente al pool.
+        vm.prank(bob);
+        tokenA.transfer(address(pool), 10 ether);
+
+        // 2. Alicia retira el 100% de sus LP tokens.
+        uint256 aliceShares = pool.balanceOf(alice);
+
+        vm.prank(alice);
+        pool.removeLiquidity(aliceShares, 0, 0);
+
+        assertEq(pool.totalSupply(), 0);
+        assertEq(pool.reserveA(), 0);
+        assertEq(pool.reserveB(), 0);
+
+        // Hay 10 Token A que no forman parte
+        // de las reservas registradas.
+        assertEq(tokenA.balanceOf(address(pool)), 10 ether);
+
+        // 3. Bob inicializa otra vez la piscina.
+        vm.prank(bob);
+        pool.addInitialLiquidity(50 ether, 100 ether);
+
+        // El nuevo depósito se contabiliza.
+        assertEq(pool.reserveA(), 50 ether);
+        assertEq(pool.reserveB(), 100 ether);
+
+        // Pero el saldo real incluye la donación antigua.
+        assertEq(tokenA.balanceOf(address(pool)), 60 ether);
+
+        assertEq(tokenB.balanceOf(address(pool)), 100 ether);
+
+        // La nueva inicialización no ha recuperado
+        // ni contabilizado la donación anterior.
+        assertEq(pool.totalSupply(), pool.balanceOf(bob));
+    }
 }
